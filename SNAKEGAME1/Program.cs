@@ -398,10 +398,24 @@ class Program
 
 Your final score: " + (score == 0 ? "0 " : score.ToString());
 
-        // Display the GAME OVER message centered on the screen
+           // Display the GAME OVER message centered on the screen
         CenterTextOnScreen(gameOverMessage);
 
-        Console.ReadKey(); // Wait for any key press to exit
+        string prompt = "Press Enter to play again, or Press any other keys to Escape.";
+        CenterTextHorizontally(prompt);
+
+        // Wait for the player to press Enter to play again or Escape to exit
+        ConsoleKey key = Console.ReadKey(true).Key;
+        if (key == ConsoleKey.Enter)
+        {
+            // Play again: call the Main function or restart the game
+            Main();
+        }
+        else if (key == ConsoleKey.Escape)
+        {
+            // Exit the game
+            return;
+        }
     }
 
 }
