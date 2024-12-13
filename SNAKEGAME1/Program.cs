@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 class Program
@@ -76,6 +76,8 @@ class Program
         Queue<(int X, int Y)> snake = new();  // Queue to store the snake's body positions
         (int X, int Y) = (width / 2, height / 2);  // Start the snake at the center of the screen
         bool closeRequested = false;  // Flag to check if the game should be closed
+        bool isPaused = false;  // Flag to check if the game is paused
+
 
         try
         {
@@ -96,7 +98,6 @@ class Program
             // Main game loop
             while (!closeRequested)
             {
-
                 // Check if the console window has been resized and end the game if so
                 if (Console.WindowWidth != width || Console.WindowHeight != height)
                 {
@@ -105,58 +106,103 @@ class Program
                     return;  // End the game if the console size changes
                 }
 
-                // Update the snake's position based on the current direction
-                switch (direction)
-                {
-                    case Direction.Up: Y--; break;
-                    case Direction.Down: Y++; break;
-                    case Direction.Left: X--; break;
-                    case Direction.Right: X++; break;
-                }
-
-                // Check if the snake collides with the walls or itself
-                if (X < 0 || X >= width ||
-                    Y < 0 || Y >= height ||
-                    map[X, Y] is Tile.Snake)
-                {
-                    // Call DisplayGameOver when the game ends due to collision
-                    DisplayGameOver(snake.Count - 1);  // Pass the score
-                    return;  // End the game
-                }
-
-
-                // Draw the new position of the snake
-                Console.SetCursorPosition(X, Y);
-                Console.Write(DirectionChars[(int)direction!]);  // Display the snake's current direction
-
-                // Add the new position to the snake's body
-                snake.Enqueue((X, Y));
-
-                // If the snake eats food, generate new food
-                if (map[X, Y] is Tile.Food)
-                {
-                    PositionFood(map, width, height);  // Place new food on the map
-                }
-                else
-                {
-                    // If no food is eaten, remove the last segment of the snake's body
-                    (int x, int y) = snake.Dequeue();
-                    map[x, y] = Tile.Open;  // Mark the old position as empty
-                    Console.SetCursorPosition(x, y);
-                    Console.Write(' ');  // Clear the old position
-                }
-
-                // Mark the current position as part of the snake's body
-                map[X, Y] = Tile.Snake;
-
-                // Check if a key is pressed to change the direction
+                // Check if a key is pressed to change the direction or pause the game
                 if (Console.KeyAvailable)
                 {
-                    GetDirection(ref direction, ref closeRequested);  // Get the new direction from user input
+                    var key = Console.ReadKey(true).Key;
+                    if (key == ConsoleKey.Enter)
+                    {
+                        isPaused = !isPaused;  // Toggle pause state
+                    }
+                    else
+                    {
+                        // Update direction based on key press
+                        switch (key)
+                        {
+                            case ConsoleKey.UpArrow:
+                                if (direction != Direction.Down) direction = Direction.Up; // Prevent reversing
+                                break;
+                            case ConsoleKey.DownArrow:
+                                if (direction != Direction.Up) direction = Direction.Down; // Prevent reversing
+                                break;
+                            case ConsoleKey.LeftArrow:
+                                if (direction != Direction.Right) direction = Direction.Left; // Prevent reversing
+                                break;
+                            case ConsoleKey.RightArrow:
+                                if (direction != Direction.Left) direction = Direction.Right; // Prevent reversing
+                                break;
+                            case ConsoleKey.Escape:
+                                closeRequested = true; // Allow the player to exit the game
+                                break;
+                        }
+                    }
                 }
 
-                // Control the snake's speed
-                System.Threading.Thread.Sleep(sleep);  // Pause for a brief moment based on the selected speed
+                // Only move the snake if the game is not paused
+                if (!isPaused)
+                {
+                    // Update the snake's position based on the current direction
+                    switch (direction)
+                    {
+                        case Direction.Up: Y--; break;
+                        case Direction.Down: Y++; break;
+                        case Direction.Left: X--; break;
+                        case Direction.Right: X++; break;
+                    }
+
+                    // Check if the snake collides with the walls or itself
+                    if (X < 0 || X >= width ||
+                    Y < 0 || Y >= height ||
+                    map[X, Y] is Tile.Snake)
+                    {
+                        // Call DisplayGameOver when the game ends due to collision
+                        DisplayGameOver(snake.Count - 1);  // Pass the score
+                        return;  // End the game
+                    }
+
+                    // Draw the new position of the snake
+                    Console.SetCursorPosition(X, Y);
+                    Console.Write(DirectionChars[(int)direction!]);  // Display the snake's current direction
+
+                    // Add the new position to the snake's body
+                    snake.Enqueue((X, Y));
+
+                    // If the snake eats food, generate new food and increase speed
+                    if (map[X, Y] is Tile.Food)
+                    {
+                        PositionFood(map, width, height);  // Place new food on the map
+                        velocity = Math.Max(10, velocity - 10);  // Increase speed, ensuring it doesn't go below a threshold
+                        sleep = TimeSpan.FromMilliseconds(velocity);  // Update sleep time based on new speed
+                    }
+                    else
+                    {
+                        // If no food is eaten, remove the last segment of the snake's body
+                        (int x, int y) = snake.Dequeue();
+                        map[x, y] = Tile.Open;  // Mark the old position as empty
+                        Console.SetCursorPosition(x, y);
+                        Console.Write(' ');  // Clear the old position
+                    }
+
+                    // Mark the current position as part of the snake's body
+                    map[X, Y] = Tile.Snake;
+
+                    // Check if a key is pressed to change the direction or pause the game
+                    if (Console.KeyAvailable)
+                    {
+                        var key = Console.ReadKey(true).Key;
+                        if (key == ConsoleKey.Enter)
+                        {
+                            isPaused = true;  // Pause the game
+                        }
+                        else
+                        {
+                            GetDirection(ref direction, ref closeRequested);  // Get the new direction from user input
+                        }
+                    }
+
+                    // Control the snake's speed
+                    System.Threading.Thread.Sleep(sleep);  // Pause for a brief moment based on the selected speed
+                }
             }
         }
         catch (Exception e)
@@ -244,29 +290,21 @@ class Program
 |------------------------------------------------------------------|
 |                          Game Instructions:                      | 
 |------------------------------------------------------------------|
-1. Choose the Speed of the Snake:
-    Press 1: Slow 
-    Press 2: Normal  
-    Press 3: Fast   
-   -> If you press Enter without typing anything, the default speed (2) will be selected.
+1. Choose Speed:
+Press 1: Slow | 2: Normal (default) | 3: Fast
 
-2. Control the Snake's Direction:
-   Use the arrow keys on your keyboard to control the direction of the snake.
-   - Up Arrow: Move Up
-   - Down Arrow: Move Down
-   - Left Arrow: Move Left
-   - Right Arrow: Move Right
+2. Control Snake:
+Use arrow keys:
+↑: Up | ↓: Down | ←: Left | →: Right
 
-3. Game Objective:
-   The snake will grow longer each time it eats food.
-   Game Over Conditions: The game will end if the snake collides with the walls or runs into itself.
+3. Objective:
+Grow the snake by eating food. Game Over if it hits walls or itself.
 
-4. Pause and Resume:
-   To pause the game, press Enter.
-   To continue, press Enter again.
+4. Pause/Resume:
+Press Enter to pause or continue.
 
-5. Replay the Game:
-   After each game over, press Enter to restart the game.
+5. Replay:
+After Game Over, press Enter to restart.
 --------------------------------------------------------
 ";
 
@@ -398,7 +436,7 @@ class Program
 
 Your final score: " + (score == 0 ? "0 " : score.ToString());
 
-           // Display the GAME OVER message centered on the screen
+        // Display the GAME OVER message centered on the screen
         CenterTextOnScreen(gameOverMessage);
 
         string prompt = "Press Enter to play again, or Press any other keys to Escape.";
